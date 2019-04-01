@@ -8,12 +8,13 @@ from fake_useragent import UserAgent
 from io import BytesIO
 
 options = argparse.ArgumentParser(description='Options')
-options.add_argument('lat_start', type=float, help='Start latitude')
-options.add_argument('lon_start', type=float, help='Start longitude')
-options.add_argument('lat_end', type=float, help='End latitude')
-options.add_argument('lon_end', type=float, help='End longitude')
+options.add_argument('lat', type=float, help='Latitude')
+options.add_argument('lon', type=float, help='Longitude')
+options.add_argument('width', type=int, help='Tile width')
+options.add_argument('height', type=int, help='Tile height')
 options.add_argument('level', type=int, help='Zoom level (15 default)')
 options.add_argument('time', type=int, help='Seconds int week (-1 for realtime)')
+options.add_argument('filename', type=str, help='Output file name')
 
 args = options.parse_args()
 
@@ -42,34 +43,14 @@ def build_proxy_list():
         })
     return proxy_list
 
-def build_tile_region(lat_start, lat_end, lon_start, lon_end, zoom):
-    x_start,y_start = coordinate_to_tile(lat_start, lon_start, zoom)
-    x_end,y_end = coordinate_to_tile(lat_end, lon_end, zoom)
-
-    print([x_start,y_start])
-    print([x_end,y_end])
-
-    if x_end - x_start < 0:
-        aux = x_end
-        x_end = x_start
-        x_start = aux        
-
-    if y_end - y_start < 0:
-        aux = y_end
-        y_end = y_start
-        y_start = aux        
-
-    if x_start == x_end:
-        x_end = x_end + 1
-
-    if y_end == y_start:
-        y_end = y_end + 1
+def build_tile_region(lat, lon, width, height, zoom):
+    x,y = coordinate_to_tile(lat, lon, zoom)
 
     return {
-        'x_start': x_start,
-        'x_end': x_end,
-        'y_start': y_start,
-        'y_end': y_end
+        'x_start': x,
+        'x_end': x + width,
+        'y_start': y,
+        'y_end': y + height
         }
 
 def get_traffic_image(url, proxy):
@@ -82,8 +63,8 @@ def get_traffic_image(url, proxy):
 def get_proxy(proxy_list):
   return proxy_list[random.randint(0, len(proxy_list) - 1)]
 
-def scraper(proxy_list, time, zoom_level, region):
-    output_file = os.path.dirname(os.path.realpath(__file__)) + "/traffic.png"
+def scraper(proxy_list, time, zoom_level, region, filename):
+    output_file = os.path.dirname(os.path.realpath(__file__)) + "/" + filename
     w = region['x_end'] - region['x_start']
     h = region['y_end'] - region['y_start']
 
@@ -123,12 +104,8 @@ def main():
         print('Proxy list is empty')
         return -1
 
-    region = build_tile_region(args.lat_start, args.lat_end, args.lon_start, args.lon_end, args.level)
+    region = build_tile_region(args.lat, args.lon, args.width, args.height, args.level)
 
-    if region is None:
-        print('Tile region is empty. Check coordinates input')
-        return -1
-
-    scraper(proxy_list, args.time, args.level, region)
+    scraper(proxy_list, args.time, args.level, region, args.filename)
 if __name__ == '__main__':
   main()
